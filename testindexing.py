@@ -2,9 +2,18 @@ import torch
 from fastapi import FastAPI, Request
 import uvicorn
 import transformers
-
-app = FastAPI()
 from transformers import AutoModel, AutoTokenizer
+import mysql.connector
+
+dbcon = mysql.connector.connect(
+    host="127.0.0.1",
+    user="root",
+    password="",
+    database="pythondb")
+
+mycursor = dbcon.cursor()
+app = FastAPI()
+
 
 @app.get("/")
 def read_root():
@@ -72,14 +81,32 @@ def get_weightedmean_embedding(batch_tokens, model):
 
     return embeddings
 
-
-@app.post("/indexing")
-def get_embedding(text: str):
+@app.post("/indexing/doc")
+async def get_embedding(text: str):
     doc = []
     doc.append(text)
     embedding = get_weightedmean_embedding(tokenize_with_specb(doc, is_query=False), model)
-    return embedding
+    doc_embedding = '''{}'''.format(embedding)
+    sql = "INSERT INTO `embedding`(`text`, `embedding`) VALUES (%s, JSON_OBJECT(%s, %s))"
+    val = (text, "embedding", doc_embedding)
+    mycursor.execute(sql,val)
+    dbcon.commit()
+    return {"status" : "success"}
 
+@app.get("/indexing/doc/{myid}")
+async def get_embedding_by_id(myid:int):
+    sql = "SELECT JSON_VALUE(`embedding`, '$.embedding') AS embedding FROM `embedding` WHERE `id` = %s"
+    val = (myid,)
+    mycursor.execute(sql,val)
+    data = mycursor.fetchone()
+    return data[0]
+
+@app.post("/indexing/querie")
+def get_embedding(text: str):
+    querie = []
+    querie.append(text)
+    embedding = get_weightedmean_embedding(tokenize_with_specb(querie, is_query=True), model)
+    return {"querie_embedding" : '''{}'''.format(embedding)}
 
 if __name__ == "__main__":
     uvicorn.run("testindexing:app", host='127.0.0.1', port=8000, reload=True)
