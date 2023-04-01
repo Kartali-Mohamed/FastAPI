@@ -82,7 +82,8 @@ def get_weightedmean_embedding(batch_tokens, model):
     return embeddings
 
 @app.post("/indexing/doc")
-async def get_embedding(text: str):
+async def get_embedding(title: str , desc: str):
+    text = title + ' : ' + desc
     doc = []
     doc.append(text)
     embedding = get_weightedmean_embedding(tokenize_with_specb(doc, is_query=False), model)
