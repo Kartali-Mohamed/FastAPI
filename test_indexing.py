@@ -1,7 +1,6 @@
 import torch
 from fastapi import FastAPI, Request
 import uvicorn
-import transformers
 from transformers import AutoModel, AutoTokenizer
 import mysql.connector
 
